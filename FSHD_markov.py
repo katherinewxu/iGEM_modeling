@@ -32,8 +32,7 @@ print(f"Hash for GSM3487556_FSHD1.2.txt.gz: {hash_value2}")
 # Setup pooch to fetch data
 MY_DATA = pooch.create(
     path=pooch.os_cache("my_sample_data"),  # Cache directory
-    base_url="https://raw.githubusercontent.com/katherinewxu/iGEM_modeling/main/scRNAseqData/",  # Correct base URL
-    # Base URL (update with actual URL)
+    base_url="https://raw.githubusercontent.com/katherinewxu/iGEM_modeling/main/scRNAseqData/", 
     registry="my_registry.txt"  # Local registry file
 )
 
@@ -57,9 +56,6 @@ for sample_id, filename in samples.items():
 for sample_id, data in data_dict.items():
     print(f"Data for {sample_id}:")
     print(data.head())  # Print the first few rows of each DataFrame
-
-# Optionally, print the cache directory path
-print(f"Cache directory: {MY_DATA.path}")
 
 # Given data for initial and 3-day states
 initial_state_distribution = {"S": 5488, "E": 0, "I": 0, "R": 0, "D": 0}
