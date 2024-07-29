@@ -32,7 +32,8 @@ print(f"Hash for GSM3487556_FSHD1.2.txt.gz: {hash_value2}")
 # Setup pooch to fetch data
 MY_DATA = pooch.create(
     path=pooch.os_cache("my_sample_data"),  # Cache directory
-    base_url="https://raw.githubusercontent.com/katherinewxu/iGEM_modeling/main/scRNAseqData",
+    base_url="https://raw.githubusercontent.com/katherinewxu/iGEM_modeling/main/scRNAseqData/",  # Correct base URL
+    # Base URL (update with actual URL)
     registry="my_registry.txt"  # Local registry file
 )
 
