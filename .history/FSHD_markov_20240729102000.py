@@ -26,6 +26,7 @@ for sample_id, filepath in samples.items():
         adatas[sample_id] = sample_adata  # Store the AnnData object in the dictionary
         print(f"Successfully read data for {sample_id}")
 
+
 # The adatas dictionary now contains AnnData objects for each sample
 for sample_id, adata in adatas.items():
     print(f"Data for {sample_id}:")

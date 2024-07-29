@@ -2,34 +2,60 @@ import numpy as np
 from scipy.stats import dirichlet
 import matplotlib.pyplot as plt
 import random
-# Data retrieval
-import pandas as pd
+
+# Core scverse libraries
 import scanpy as sc
 import anndata as ad
+# Data retrieval
+import pooch
+import pandas as pd
+import hashlib
 
-# Define the sample file mappings (local paths)
+# Function to calculate hash value
+def calculate_hash(file_path):
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest()
+
+# File paths and hash values
+file_path1 = "/Users/chris/Downloads/scRNAseqData/GSM3487556_FSHD1.1.txt"
+file_path2 = "/Users/chris/Downloads/scRNAseqData/GSM3487556_FSHD1.1.txt.gz"
+
+hash_value1 = calculate_hash(file_path1)
+hash_value2 = calculate_hash(file_path2)
+
+print(f"Hash for GSM3487556_FSHD1.1.txt.gz: {hash_value1}")
+print(f"Hash for GSM3487556_FSHD1.2.txt.gz: {hash_value2}")
+
+# Setup pooch to fetch data
+MY_DATA = pooch.create(
+    path=pooch.os_cache("my_sample_data"),  # Cache directory
+    base_url="https://raw.githubusercontent.com/katherinewxu/iGEM_modeling/main/scRNAseqData",
+    registry="my_registry.txt"  # Local registry file
+)
+
+# Define the sample file mappings
 samples = {
-    "sample1": "/Users/chris/iGEM_modeling/scRNAseqData/GSM3487556_FSHD1.1.txt",
-    "sample2": "/Users/chris/iGEM_modeling/scRNAseqData/GSM3487557_FSHD1.2.txt"
+    "sample1": "GSM3487556_FSHD1.1.txt.gz",
+    "sample2": "GSM3487556_FSHD1.2.txt.gz",
 }
 
-# Initialize an empty dictionary to store the AnnData objects
-adatas = {}
+# Initialize an empty dictionary to store the data
+data_dict = {}
 
-# Read and process data for each sample
-for sample_id, filepath in samples.items():
-        # Read the text file into a DataFrame
-        sample_data = pd.read_csv(filepath, sep="\t", index_col=0)
-        # Convert the DataFrame to an AnnData object
-        sample_adata = ad.AnnData(sample_data)
-        sample_adata.var_names_make_unique()  # Ensure gene names are unique
-        adatas[sample_id] = sample_adata  # Store the AnnData object in the dictionary
-        print(f"Successfully read data for {sample_id}")
 
-# The adatas dictionary now contains AnnData objects for each sample
-for sample_id, adata in adatas.items():
+# Fetch and process data for each sample
+for sample_id, filename in samples.items():
+    path = MY_DATA.fetch(filename)  # Fetch the file
+    sample_data = pd.read_csv(path, sep="\t", compression='gzip')  # Read the text file into a DataFrame (assuming TSV format and gzip compression)
+    data_dict[sample_id] = sample_data
+
+# The data_dict now contains DataFrames for each sample
+for sample_id, data in data_dict.items():
     print(f"Data for {sample_id}:")
-    print(adata)  # Print a summary of each AnnData object
+    print(data.head())  # Print the first few rows of each DataFrame
 
 # Given data for initial and 3-day states
 initial_state_distribution = {"S": 5488, "E": 0, "I": 0, "R": 0, "D": 0}
@@ -88,6 +114,7 @@ def bayesian_optimization(alpha_posterior, initial_state_distribution, observed_
 def SSR_Score(predicted_distribution, observed_distribution):
     score = sum((predicted_distribution[state] - observed_distribution[state]) ** 2 for state in predicted_distribution)
     return score
+
 
 optimized_probabilities = bayesian_optimization(alpha_posterior, initial_state_distribution, observed_state_distribution_3days)
 simulation_history = simulate_markov_model(optimized_probabilities, initial_state_distribution, 3)

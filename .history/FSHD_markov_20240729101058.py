@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import dirichlet
 import matplotlib.pyplot as plt
 import random
+
 # Data retrieval
 import pandas as pd
 import scanpy as sc
@@ -9,8 +10,8 @@ import anndata as ad
 
 # Define the sample file mappings (local paths)
 samples = {
-    "sample1": "/Users/chris/iGEM_modeling/scRNAseqData/GSM3487556_FSHD1.1.txt",
-    "sample2": "/Users/chris/iGEM_modeling/scRNAseqData/GSM3487557_FSHD1.2.txt"
+    "sample1": "/Users/chris/iGEM_modeling/scRNAseqData/GSM3487556_FSHD1.1.txt.gz",
+    "sample2": "/Users/chris/Downloads/scRNAseqData/GSM3487556_FSHD1.2.txt",
 }
 
 # Initialize an empty dictionary to store the AnnData objects
@@ -18,13 +19,16 @@ adatas = {}
 
 # Read and process data for each sample
 for sample_id, filepath in samples.items():
-        # Read the text file into a DataFrame
+    try:
+        # Read the text file into a DataFrame (assuming TSV format)
         sample_data = pd.read_csv(filepath, sep="\t", index_col=0)
         # Convert the DataFrame to an AnnData object
         sample_adata = ad.AnnData(sample_data)
         sample_adata.var_names_make_unique()  # Ensure gene names are unique
         adatas[sample_id] = sample_adata  # Store the AnnData object in the dictionary
         print(f"Successfully read data for {sample_id}")
+    except Exception as e:
+        print(f"Failed to read data for {sample_id}: {e}")
 
 # The adatas dictionary now contains AnnData objects for each sample
 for sample_id, adata in adatas.items():
@@ -88,6 +92,7 @@ def bayesian_optimization(alpha_posterior, initial_state_distribution, observed_
 def SSR_Score(predicted_distribution, observed_distribution):
     score = sum((predicted_distribution[state] - observed_distribution[state]) ** 2 for state in predicted_distribution)
     return score
+
 
 optimized_probabilities = bayesian_optimization(alpha_posterior, initial_state_distribution, observed_state_distribution_3days)
 simulation_history = simulate_markov_model(optimized_probabilities, initial_state_distribution, 3)

@@ -2,29 +2,41 @@ import numpy as np
 from scipy.stats import dirichlet
 import matplotlib.pyplot as plt
 import random
-# Data retrieval
-import pandas as pd
+
+# Core scverse libraries
 import scanpy as sc
 import anndata as ad
+# Data retrieval
+import pooch
+import pandas as pd
+
+file_path1 = "/Users/chris/Downloads/scRNAseqData/GSM3487556_FSHD1.1.txt"
+file_path2 = "/Users/chris/Downloads/scRNAseqData/GSM3487556_FSHD1.2.txt"
 
 # Define the sample file mappings (local paths)
 samples = {
-    "sample1": "/Users/chris/iGEM_modeling/scRNAseqData/GSM3487556_FSHD1.1.txt",
-    "sample2": "/Users/chris/iGEM_modeling/scRNAseqData/GSM3487557_FSHD1.2.txt"
+    "sample1": file_path1,
+    "sample2": file_path2,
 }
+import h5py
+
+# Check if files can be opened with h5py
+for sample_id, filepath in samples.items():
+    try:
+        with h5py.File(filepath, "r") as f:
+            print(f"Successfully opened {filepath}")
+    except Exception as e:
+        print(f"Failed to open {filepath}: {e}")
+
 
 # Initialize an empty dictionary to store the AnnData objects
 adatas = {}
 
 # Read and process data for each sample
 for sample_id, filepath in samples.items():
-        # Read the text file into a DataFrame
-        sample_data = pd.read_csv(filepath, sep="\t", index_col=0)
-        # Convert the DataFrame to an AnnData object
-        sample_adata = ad.AnnData(sample_data)
-        sample_adata.var_names_make_unique()  # Ensure gene names are unique
-        adatas[sample_id] = sample_adata  # Store the AnnData object in the dictionary
-        print(f"Successfully read data for {sample_id}")
+    sample_adata = sc.read_10x_h5(filepath)  # Read the h5 file into an AnnData object
+    sample_adata.var_names_make_unique()     # Ensure gene names are unique
+    adatas[sample_id] = sample_adata         # Store the AnnData object in the dictionary
 
 # The adatas dictionary now contains AnnData objects for each sample
 for sample_id, adata in adatas.items():
@@ -88,6 +100,7 @@ def bayesian_optimization(alpha_posterior, initial_state_distribution, observed_
 def SSR_Score(predicted_distribution, observed_distribution):
     score = sum((predicted_distribution[state] - observed_distribution[state]) ** 2 for state in predicted_distribution)
     return score
+
 
 optimized_probabilities = bayesian_optimization(alpha_posterior, initial_state_distribution, observed_state_distribution_3days)
 simulation_history = simulate_markov_model(optimized_probabilities, initial_state_distribution, 3)

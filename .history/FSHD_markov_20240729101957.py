@@ -25,6 +25,8 @@ for sample_id, filepath in samples.items():
         sample_adata.var_names_make_unique()  # Ensure gene names are unique
         adatas[sample_id] = sample_adata  # Store the AnnData object in the dictionary
         print(f"Successfully read data for {sample_id}")
+    except Exception as e:
+        print(f"Failed to read data for {sample_id}: {e}")
 
 # The adatas dictionary now contains AnnData objects for each sample
 for sample_id, adata in adatas.items():
