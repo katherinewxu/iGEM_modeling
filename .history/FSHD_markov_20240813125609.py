@@ -112,8 +112,8 @@ def bayesian_optimization(transition_probabilities, initial_state_distribution, 
 
     for _ in range(iterations):
         sampled_probabilities = {}
-        for state in transition_probabilities:
-            sampled_prob = dirichlet.rvs(transition_probabilities[state])[0]
+        for state in alpha_posterior:
+            sampled_prob = dirichlet.rvs(alpha_posterior[state])[0]
             sampled_probabilities[state] = sampled_prob
         
         simulation_history = simulate_markov_model(sampled_probabilities, initial_state_distribution, 3)
@@ -130,7 +130,7 @@ def SSR_Score(predicted_distribution, observed_distribution):
     score = sum((predicted_distribution[state] - observed_distribution[state]) ** 2 for state in predicted_distribution)
     return score
 
-optimized_probabilities = bayesian_optimization(transition_probabilities, initial_state_distribution, observed_state_distribution_3days)
+optimized_probabilities = bayesian_optimization(alpha_posterior, initial_state_distribution, observed_state_distribution_3days)
 simulation_history = simulate_markov_model(optimized_probabilities, initial_state_distribution, 3)
 
 # Print the history of state distributions
