@@ -82,31 +82,22 @@ import matplotlib.pyplot as plt
 initial_state_distribution = {"S": 5488, "E": 0, "I": 0, "R": 0, "D": 0}
 observed_state_distribution_3days = {"S": 4956, "E": 14, "I": 13, "R": 150, "D": 355}
 
-
-Δ = 0.01  # DUX4 syncytial diffusion rate
-Dr = 1/20.1  # DUX4 target gene-induced death rate
-VD = 0.00211  # Transcription rate
-d0 = 0.246  # Degradation rate
-VT = 6.41 # Translation rate
-TD = 1/13  # mRNA half-life
-xs = random.uniform(0.1, 1)
-xe = random.uniform(0.1, 1)
-xi = random.uniform(0.1, 1)
-xr = random.uniform(0.1, 1)
-
 # Hourly transition probabilities (with self-transition included)
 transition_probabilities_hourly = {
-    "S": np.array([1 - (VD + Δ), VD, 0, Δ, 0]),  # Δ influences transition from S to R
-    "E": np.array([d0, 1 - (d0 + VT * TD + Δ), VT * TD + Δ, 0, 0]),
-    "I": np.array([0, 0, 1 - (d0 + Dr), d0, Dr]),
-    "R": np.array([0, 0, VD, 1 - (VD + Dr), Dr]),
-    "D": np.array([0, 0, 0, 0, 1.0])
-
+    "S": np.array([0.002, 0.0021, 0, 0, 0]),
+    "E": np.array([0.246, 1e-10, 6.41/13, 1e-10, 1e-10]),
+    "I": np.array([0.00, 0.00, 0.02, 0.00211, 1/20.1]),
+    "R": np.array([0.002, 0.00, 0.246, 0.5, 1/20.1]),
+    "D": np.array([0.0, 0.0, 0.0, 0.0, 1.0])
 }
 
 # Normalize non-zero probabilities
-for key in transition_probabilities_hourly:
-    transition_probabilities_hourly[key] /= transition_probabilities_hourly[key].sum()  # Ensuring probabilities sum to 1
+for state, probabilities in transition_probabilities_hourly.items():
+    non_zero_indices = probabilities > 0
+    sum_non_zero = np.sum(probabilities[non_zero_indices])
+    if sum_non_zero > 0:
+        transition_probabilities_hourly[state][non_zero_indices] /= sum_non_zero
+
 # Function to simulate Markov model over time
 def simulate_markov_model(transition_probabilities, initial_state_distribution, time_steps):
     state_distribution = initial_state_distribution.copy()
@@ -162,9 +153,8 @@ optimized_probabilities = bayesian_optimization(transition_probabilities_hourly,
 simulation_history = simulate_markov_model(optimized_probabilities, initial_state_distribution, 72)
 
 print("Optimized Transition Probabilities:")
-for state, probabilities in optimized_probabilities.items():
-    print(f"{state} : {probabilities}")
-
+for row, optimized_probabilities.value in optimized_probabilities:
+    print(f"{row} : {value}")
 
 # Print the history of state distributions at each hour
 for t, distribution in enumerate(simulation_history):

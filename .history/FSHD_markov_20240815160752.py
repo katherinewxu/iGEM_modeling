@@ -98,7 +98,7 @@ xr = random.uniform(0.1, 1)
 transition_probabilities_hourly = {
     "S": np.array([1 - (VD + Δ), VD, 0, Δ, 0]),  # Δ influences transition from S to R
     "E": np.array([d0, 1 - (d0 + VT * TD + Δ), VT * TD + Δ, 0, 0]),
-    "I": np.array([0, 0, 1 - (d0 + Dr), d0, Dr]),
+    "I": np.array([0, 0, 1 - (VD + Dr), 0, Dr]),
     "R": np.array([0, 0, VD, 1 - (VD + Dr), Dr]),
     "D": np.array([0, 0, 0, 0, 1.0])
 

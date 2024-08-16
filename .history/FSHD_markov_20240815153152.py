@@ -89,17 +89,17 @@ VD = 0.00211  # Transcription rate
 d0 = 0.246  # Degradation rate
 VT = 6.41 # Translation rate
 TD = 1/13  # mRNA half-life
-xs = random.uniform(0.1, 1)
-xe = random.uniform(0.1, 1)
-xi = random.uniform(0.1, 1)
-xr = random.uniform(0.1, 1)
+xs = rand()
+xe
+xi
+xr
 
 # Hourly transition probabilities (with self-transition included)
 transition_probabilities_hourly = {
-    "S": np.array([1 - (VD + Δ), VD, 0, Δ, 0]),  # Δ influences transition from S to R
-    "E": np.array([d0, 1 - (d0 + VT * TD + Δ), VT * TD + Δ, 0, 0]),
-    "I": np.array([0, 0, 1 - (d0 + Dr), d0, Dr]),
-    "R": np.array([0, 0, VD, 1 - (VD + Dr), Dr]),
+    "S": np.array([xs, VD, 0, Δ, 0]),  # Δ influences transition from S to R
+    "E": np.array([d0, xe, VT*TD + Δ, 0, 0]),
+    "I": np.array([0, 0, VD, xi, Dr]),
+    "R": np.array([0, 0, VD, xr, Dr]),
     "D": np.array([0, 0, 0, 0, 1.0])
 
 }

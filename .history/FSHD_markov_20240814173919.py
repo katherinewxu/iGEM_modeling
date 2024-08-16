@@ -57,70 +57,59 @@ from scipy.sparse import csr_matrix
 # adata
 
 # adata.to_df(layer="log_transformed")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Initial and observed state distributions
-initial_state_distribution = {"S": 5488, "E": 0, "I": 0, "R": 0, "D": 0}
-observed_state_distribution_3days = {"S": 4956, "E": 14, "I": 13, "R": 150, "D": 355}
 import numpy as np
-from scipy.stats import dirichlet
+from scipy.stats import dirichlet, chisquare
 import matplotlib.pyplot as plt
 
 # Initial and observed state distributions
 initial_state_distribution = {"S": 5488, "E": 0, "I": 0, "R": 0, "D": 0}
 observed_state_distribution_3days = {"S": 4956, "E": 14, "I": 13, "R": 150, "D": 355}
 
-
-Δ = 0.01  # DUX4 syncytial diffusion rate
-Dr = 1/20.1  # DUX4 target gene-induced death rate
-VD = 0.00211  # Transcription rate
-d0 = 0.246  # Degradation rate
-VT = 6.41 # Translation rate
-TD = 1/13  # mRNA half-life
-xs = random.uniform(0.1, 1)
-xe = random.uniform(0.1, 1)
-xi = random.uniform(0.1, 1)
-xr = random.uniform(0.1, 1)
-
-# Hourly transition probabilities (with self-transition included)
-transition_probabilities_hourly = {
-    "S": np.array([1 - (VD + Δ), VD, 0, Δ, 0]),  # Δ influences transition from S to R
-    "E": np.array([d0, 1 - (d0 + VT * TD + Δ), VT * TD + Δ, 0, 0]),
-    "I": np.array([0, 0, 1 - (d0 + Dr), d0, Dr]),
-    "R": np.array([0, 0, VD, 1 - (VD + Dr), Dr]),
-    "D": np.array([0, 0, 0, 0, 1.0])
-
+# Transition probabilities per day
+transition_probabilities_daily = {
+    "S": np.array([0, 0.0021, 1e-10, 1e-10, 1e-10]),
+    "E": np.array([0.246, 1e-10, 6.41/13, 0, 0]),
+    "I": np.array([0.002, 0.002, 1e-10, 0.00211, 1/20.1]),
+    "R": np.array([0.002, 0.002, 0.246, 1e-10, 1/20.1]),
+    "D": np.array([0.0, 0.0, 0.0, 0.0, 1.0])  # 'D' is a terminal state with no out-transitions
 }
 
+# Convert daily transition probabilities to hourly with a stay probability
+transition_probabilities_hourly = {}
+for state, probabilities in transition_probabilities_daily.items():
+    non_zero_indices = probabilities > 0
+    transition_probabilities_hourly[state] = np.zeros_like(probabilities)
+    if sum(non_zero_indices) > 0:  # Only adjust non-terminal states
+        transition_probabilities_hourly[state][non_zero_indices] = 1 - np.power(1 - probabilities[non_zero_indices], 1/24.0)
+        stay_prob = 1 - np.sum(transition_probabilities_hourly[state])
+        transition_probabilities_hourly[state] = np.append(stay_prob, transition_probabilities_hourly[state])
+    else:
+        transition_probabilities_hourly[state] = np.append(1.0, probabilities)  # Terminal state stays the same
+
 # Normalize non-zero probabilities
-for key in transition_probabilities_hourly:
-    transition_probabilities_hourly[key] /= transition_probabilities_hourly[key].sum()  # Ensuring probabilities sum to 1
-# Function to simulate Markov model over time
+for state, probabilities in transition_probabilities_hourly.items():
+    non_zero_indices = probabilities > 0
+    sum_non_zero = np.sum(probabilities[non_zero_indices])
+    if sum_non_zero > 0:
+        transition_probabilities_hourly[state][non_zero_indices] /= sum_non_zero
+
+# Function to simulate Markov model over hours
 def simulate_markov_model(transition_probabilities, initial_state_distribution, time_steps):
     state_distribution = initial_state_distribution.copy()
-    states = list(initial_state_distribution.keys())
+    states = ["Stay"] + list(initial_state_distribution.keys())
     history = [state_distribution.copy()]
     
     for _ in range(time_steps):
-        new_distribution = {state: 0 for state in states}
+        new_distribution = {state: 0 for state in states[1:]}  # Exclude "Stay"
         for state, count in state_distribution.items():
             if count > 0:
                 probs = transition_probabilities[state]
                 transitions = np.random.multinomial(count, probs)
                 for i, next_state in enumerate(states):
-                    new_distribution[next_state] += transitions[i]
+                    if next_state != "Stay":
+                        new_distribution[next_state] += transitions[i]
+                    else:
+                        new_distribution[state] += transitions[i]  # Stay transitions add to the same state
         state_distribution = new_distribution.copy()
         history.append(state_distribution.copy())
     
@@ -143,7 +132,7 @@ def bayesian_optimization(transition_probabilities, initial_state_distribution, 
             else:
                 sampled_probabilities[state] = probs
         
-        simulation_history = simulate_markov_model(sampled_probabilities, initial_state_distribution, 72)  # 72 hours = 3 days
+        simulation_history = simulate_markov_model(sampled_probabilities, initial_state_distribution, 72)
         final_distribution = simulation_history[-1]
     
         score = SSR_Score(final_distribution, observed_distribution)
@@ -162,30 +151,11 @@ optimized_probabilities = bayesian_optimization(transition_probabilities_hourly,
 simulation_history = simulate_markov_model(optimized_probabilities, initial_state_distribution, 72)
 
 print("Optimized Transition Probabilities:")
-for state, probabilities in optimized_probabilities.items():
-    print(f"{state} : {probabilities}")
-
+print(optimized_probabilities)
 
 # Print the history of state distributions at each hour
 for t, distribution in enumerate(simulation_history):
     print(f"Hour {t} Cell States: {distribution}")
-
-# Plot the cell states over time
-time_points = range(len(simulation_history))
-states = list(simulation_history[0].keys())
-
-plt.figure(figsize=(10, 6))
-
-for state in states:
-    state_counts = [distribution[state] for distribution in simulation_history]
-    plt.plot(time_points, state_counts, label=state)
-
-plt.xlabel('Time (hours)')
-plt.ylabel('Number of Cells')
-plt.title('Cell States Over Time')
-plt.legend()
-plt.grid(True)
-plt.show()
 
 # Validate the final state distribution with observed data at 72 hours (3 days)
 final_distribution = simulation_history[-1]
@@ -194,6 +164,10 @@ observed_distribution = observed_state_distribution_3days
 print("\nFinal simulated distribution vs. observed distribution (72 hours):")
 for state in final_distribution:
     print(f"{state}: Simulated={final_distribution[state]}, Observed={observed_distribution[state]}")
+
+# Chi-squared test for goodness of fit
+observed_counts = np.array(list(observed_distribution.values()))
+predicted_counts = np.array(list(final_distribution.values()))
 
 # Plot the final distributions for comparison
 states = list(final_distribution.keys())

@@ -96,13 +96,14 @@ xr = random.uniform(0.1, 1)
 
 # Hourly transition probabilities (with self-transition included)
 transition_probabilities_hourly = {
-    "S": np.array([1 - (VD + Δ), VD, 0, Δ, 0]),  # Δ influences transition from S to R
-    "E": np.array([d0, 1 - (d0 + VT * TD + Δ), VT * TD + Δ, 0, 0]),
-    "I": np.array([0, 0, 1 - (d0 + Dr), d0, Dr]),
-    "R": np.array([0, 0, VD, 1 - (VD + Dr), Dr]),
+    "S": np.array([xs, VD, 0, Δ, 0]),  # Δ influences transition from S to R
+    "E": np.array([d0, xe, VT*TD + Δ, 0, 0]),
+    "I": np.array([0, 0, VD, xi, Dr]),
+    "R": np.array([0, 0, VD, xr, Dr]),
     "D": np.array([0, 0, 0, 0, 1.0])
 
 }
+
 
 # Normalize non-zero probabilities
 for key in transition_probabilities_hourly:
@@ -163,7 +164,7 @@ simulation_history = simulate_markov_model(optimized_probabilities, initial_stat
 
 print("Optimized Transition Probabilities:")
 for state, probabilities in optimized_probabilities.items():
-    print(f"{state} : {probabilities}")
+    print(f"{state} : {round(probabilities,3)}")
 
 
 # Print the history of state distributions at each hour
@@ -185,7 +186,7 @@ plt.ylabel('Number of Cells')
 plt.title('Cell States Over Time')
 plt.legend()
 plt.grid(True)
-plt.show()
+
 
 # Validate the final state distribution with observed data at 72 hours (3 days)
 final_distribution = simulation_history[-1]

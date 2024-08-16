@@ -87,26 +87,32 @@ observed_state_distribution_3days = {"S": 4956, "E": 14, "I": 13, "R": 150, "D":
 Dr = 1/20.1  # DUX4 target gene-induced death rate
 VD = 0.00211  # Transcription rate
 d0 = 0.246  # Degradation rate
-VT = 6.41 # Translation rate
+VT = 1/13 # Translation rate
 TD = 1/13  # mRNA half-life
-xs = random.uniform(0.1, 1)
-xe = random.uniform(0.1, 1)
-xi = random.uniform(0.1, 1)
-xr = random.uniform(0.1, 1)
 
 # Hourly transition probabilities (with self-transition included)
 transition_probabilities_hourly = {
-    "S": np.array([1 - (VD + Δ), VD, 0, Δ, 0]),  # Δ influences transition from S to R
-    "E": np.array([d0, 1 - (d0 + VT * TD + Δ), VT * TD + Δ, 0, 0]),
-    "I": np.array([0, 0, 1 - (d0 + Dr), d0, Dr]),
-    "R": np.array([0, 0, VD, 1 - (VD + Dr), Dr]),
+    "S": np.array([0.002, 0.0021, 0, 0, 0]),
+    "E": np.array([0.246, 1e-10, 6.41/13, 1e-10, 1e-10]),
+    "I": np.array([0.00, 0.00, 0.02, 0.00211, 1/20.1]),
+    "R": np.array([0.000, 0.00, 0.246, 0, 1/20.1]),
+    "D": np.array([0.0, 0.0, 0.0, 0.0, 1.0])
+    
+    "S": np.array([0, VD, 0, Δ, 0]),  # Δ influences transition from S to R
+    "E": np.array([d0, 0, VT*TD + Δ, 0, 0]),
+    "I": np.array([0, 0, VD, 0, Dr]),
+    "R": np.array([0, 0, VD, 0, Dr])
     "D": np.array([0, 0, 0, 0, 1.0])
 
 }
 
 # Normalize non-zero probabilities
-for key in transition_probabilities_hourly:
-    transition_probabilities_hourly[key] /= transition_probabilities_hourly[key].sum()  # Ensuring probabilities sum to 1
+for state, probabilities in transition_probabilities_hourly.items():
+    non_zero_indices = probabilities > 0
+    sum_non_zero = np.sum(probabilities[non_zero_indices])
+    if sum_non_zero > 0:
+        transition_probabilities_hourly[state][non_zero_indices] /= sum_non_zero
+
 # Function to simulate Markov model over time
 def simulate_markov_model(transition_probabilities, initial_state_distribution, time_steps):
     state_distribution = initial_state_distribution.copy()
