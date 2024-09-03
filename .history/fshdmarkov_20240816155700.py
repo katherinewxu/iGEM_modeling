@@ -61,13 +61,12 @@ def NLL_Score(predicted_distribution, observed_distribution):
         nll -= observed_count * np.log(predicted_count)
     return nll
 
-# Bayesian Optimization with NLL tracking
+# Bayesian Optimization
 def bayesian_optimization(transition_probabilities_func, initial_state_distribution, observed_distribution, iterations=10000):
     best_params = None
     best_score = float('inf')
-    nll_scores = []
 
-    for i in range(iterations):
+    for _ in range(iterations):
         # Sample parameters randomly within some range
         Δ = np.random.uniform(0.001, 0.1)
         Dr = np.random.uniform(0.01, 0.1)
@@ -90,26 +89,11 @@ def bayesian_optimization(transition_probabilities_func, initial_state_distribut
     
         # Calculate NLL score
         score = NLL_Score(final_distribution, observed_distribution)
-        nll_scores.append(score)
-
         if score < best_score:
             best_score = score
             best_params = (Δ, Dr, VD, d0, VT, TD)
 
-        # Optional: print progress every 1000 iterations
-        if (i + 1) % 1000 == 0:
-            print(f"Iteration {i + 1}/{iterations}, Best NLL: {best_score}")
-        
-
-    # Plot the NLL scores over iterations
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(len(nll_scores)), nll_scores, label='NLL Score')
-    plt.xlabel('Iteration')
-    plt.ylabel('Negative Log-Likelihood (NLL)')
-    plt.title('NLL Score Over Iterations')
-    plt.grid(True)
-    plt.show()
-
+    print(f"Best NLL: {best_score}")
     return best_params
 
 # Optimize the transition parameters using Bayesian Optimization

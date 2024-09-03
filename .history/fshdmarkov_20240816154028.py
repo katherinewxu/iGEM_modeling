@@ -52,22 +52,18 @@ def simulate_markov_model(transition_probabilities, initial_state_distribution, 
     
     return history
 
-# Negative Log-Likelihood (NLL) function
-def NLL_Score(predicted_distribution, observed_distribution):
-    nll = 0
-    for state in predicted_distribution:
-        predicted_count = max(predicted_distribution[state], 1e-9)  # Avoid log(0)
-        observed_count = observed_distribution[state]
-        nll -= observed_count * np.log(predicted_count)
-    return nll
+# Chi-Squared score function
+def ChiSquared_Score(predicted_distribution, observed_distribution):
+    score = sum(((predicted_distribution[state] - observed_distribution[state]) ** 2) / observed_distribution[state] 
+                for state in predicted_distribution if observed_distribution[state] > 0)
+    return score
 
-# Bayesian Optimization with NLL tracking
-def bayesian_optimization(transition_probabilities_func, initial_state_distribution, observed_distribution, iterations=10000):
+# Bayesian Optimization with Chi-Squared scoring
+def bayesian_optimization(transition_probabilities_func, initial_state_distribution, observed_distribution, iterations=10000, chi_squared_threshold=10.0):
     best_params = None
     best_score = float('inf')
-    nll_scores = []
 
-    for i in range(iterations):
+    for _ in range(iterations):
         # Sample parameters randomly within some range
         Δ = np.random.uniform(0.001, 0.1)
         Dr = np.random.uniform(0.01, 0.1)
@@ -88,27 +84,17 @@ def bayesian_optimization(transition_probabilities_func, initial_state_distribut
         simulation_history = simulate_markov_model(transition_probabilities, initial_state_distribution, 72)  # 72 hours = 3 days
         final_distribution = simulation_history[-1]
     
-        # Calculate NLL score
-        score = NLL_Score(final_distribution, observed_distribution)
-        nll_scores.append(score)
-
+        # Calculate score
+        score = ChiSquared_Score(final_distribution, observed_distribution)
         if score < best_score:
             best_score = score
             best_params = (Δ, Dr, VD, d0, VT, TD)
-
-        # Optional: print progress every 1000 iterations
-        if (i + 1) % 1000 == 0:
-            print(f"Iteration {i + 1}/{iterations}, Best NLL: {best_score}")
         
+        # Early stopping if threshold is met
+        if best_score <= chi_squared_threshold:
+            break
 
-    # Plot the NLL scores over iterations
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(len(nll_scores)), nll_scores, label='NLL Score')
-    plt.xlabel('Iteration')
-    plt.ylabel('Negative Log-Likelihood (NLL)')
-    plt.title('NLL Score Over Iterations')
-    plt.grid(True)
-    plt.show()
+    print(f"Best Chi-Squared Score: {best_score}")
 
     return best_params
 

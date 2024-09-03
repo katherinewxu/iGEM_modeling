@@ -99,7 +99,7 @@ def bayesian_optimization(transition_probabilities_func, initial_state_distribut
         # Optional: print progress every 1000 iterations
         if (i + 1) % 1000 == 0:
             print(f"Iteration {i + 1}/{iterations}, Best NLL: {best_score}")
-        
+        if score < 
 
     # Plot the NLL scores over iterations
     plt.figure(figsize=(10, 6))

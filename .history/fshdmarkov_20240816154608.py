@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import chi2
 
 # Initial and observed state distributions
 initial_state_distribution = {"S": 5488, "E": 0, "I": 0, "R": 0, "D": 0}
@@ -52,22 +53,21 @@ def simulate_markov_model(transition_probabilities, initial_state_distribution, 
     
     return history
 
-# Negative Log-Likelihood (NLL) function
-def NLL_Score(predicted_distribution, observed_distribution):
-    nll = 0
-    for state in predicted_distribution:
-        predicted_count = max(predicted_distribution[state], 1e-9)  # Avoid log(0)
-        observed_count = observed_distribution[state]
-        nll -= observed_count * np.log(predicted_count)
-    return nll
+# Chi-Squared score and p-value function
+def ChiSquared_Score_and_p_value(predicted_distribution, observed_distribution):
+    chi_squared_stat = sum(((predicted_distribution[state] - observed_distribution[state]) ** 2) / observed_distribution[state] 
+                for state in predicted_distribution if observed_distribution[state] > 0)
+    degrees_of_freedom = len(predicted_distribution) - 1
+    p_value = chi2.sf(chi_squared_stat, degrees_of_freedom)
+    return chi_squared_stat, p_value
 
-# Bayesian Optimization with NLL tracking
-def bayesian_optimization(transition_probabilities_func, initial_state_distribution, observed_distribution, iterations=10000):
+# Bayesian Optimization to maximize p-value
+def bayesian_optimization(transition_probabilities_func, initial_state_distribution, observed_distribution, iterations=10000, p_value_threshold=0.95):
     best_params = None
+    best_p_value = 0.0  # Start with the lowest p-value possible
     best_score = float('inf')
-    nll_scores = []
 
-    for i in range(iterations):
+    for _ in range(iterations):
         # Sample parameters randomly within some range
         Δ = np.random.uniform(0.001, 0.1)
         Dr = np.random.uniform(0.01, 0.1)
@@ -88,27 +88,19 @@ def bayesian_optimization(transition_probabilities_func, initial_state_distribut
         simulation_history = simulate_markov_model(transition_probabilities, initial_state_distribution, 72)  # 72 hours = 3 days
         final_distribution = simulation_history[-1]
     
-        # Calculate NLL score
-        score = NLL_Score(final_distribution, observed_distribution)
-        nll_scores.append(score)
-
-        if score < best_score:
-            best_score = score
-            best_params = (Δ, Dr, VD, d0, VT, TD)
-
-        # Optional: print progress every 1000 iterations
-        if (i + 1) % 1000 == 0:
-            print(f"Iteration {i + 1}/{iterations}, Best NLL: {best_score}")
+        # Calculate Chi-Squared score and p-value
+        score, p_value = ChiSquared_Score_and_p_value(final_distribution, observed_distribution)
         
+        if p_value > best_p_value:  # Looking for the highest p-value
+            best_score = score
+            best_p_value = p_value
+            best_params = (Δ, Dr, VD, d0, VT, TD)
+        
+        # Early stopping if p-value exceeds threshold
+        if best_p_value >= p_value_threshold:
+            break
 
-    # Plot the NLL scores over iterations
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(len(nll_scores)), nll_scores, label='NLL Score')
-    plt.xlabel('Iteration')
-    plt.ylabel('Negative Log-Likelihood (NLL)')
-    plt.title('NLL Score Over Iterations')
-    plt.grid(True)
-    plt.show()
+    print(f"Best Chi-Squared Score: {best_score}, Best p-value: {best_p_value}")
 
     return best_params
 
@@ -151,26 +143,4 @@ plt.show()
 final_distribution = simulation_history[-1]
 observed_distribution = observed_state_distribution_3days
 
-print("\nFinal simulated distribution vs. observed distribution (72 hours):")
-for state in final_distribution:
-    print(f"{state}: Simulated={final_distribution[state]}, Observed={observed_distribution[state]}")
-
-# Plot the final distributions for comparison
-states = list(final_distribution.keys())
-simulated_counts = [final_distribution[state] for state in states]
-observed_counts = [observed_distribution[state] for state in states]
-
-x = np.arange(len(states))
-width = 0.35
-
-fig, ax = plt.subplots()
-bars1 = ax.bar(x - width/2, simulated_counts, width, label='Simulated')
-bars2 = ax.bar(x + width/2, observed_counts, width, label='Observed')
-
-ax.set_ylabel('Counts')
-ax.set_title('Final State Distribution at 72 Hours')
-ax.set_xticks(x)
-ax.set_xticklabels(states)
-ax.legend()
-
-plt.show()
+print("\nFinal simulated distribution vs.
